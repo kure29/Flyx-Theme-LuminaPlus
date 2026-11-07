@@ -190,6 +190,16 @@ describe("region from server name", () => {
   });
 });
 
+describe("panel region field", () => {
+  it("comes after a flag in the name and before place names", () => {
+    expect(splitFlagName("🇭🇰 香港 01", "JP")).toEqual({ region: "HK", name: "香港 01" });
+    expect(splitFlagName("东京 IIJ", "us")).toEqual({ region: "US", name: "东京 IIJ" });
+    expect(splitFlagName("东京 IIJ", "")).toEqual({ region: "JP", name: "东京 IIJ" });
+    expect(splitFlagName("服务器 A", "nonsense")).toEqual({ region: "", name: "服务器 A" });
+    expect(flyxNodeToInfo({ id: 1, name: "家里的 NAS", online: true, region: "CN" }).region).toBe("CN");
+  });
+});
+
 describe("region map setting", () => {
   const rules = parseRegionMap(
     "香港01=HK\n东京：🇯🇵\nnas = 中国\n# 注释\n无效行\n乱写=火星\nLA:us",

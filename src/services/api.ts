@@ -82,6 +82,8 @@ export interface FlyxNode {
   monthUp?: number;
   monthDown?: number;
   expiry?: string;
+  /** 国家或地区代码（较新的 FLYX：管理员选的，否则按服务器地址识别）。 */
+  region?: string;
   swap?: number;
   swapUsed?: number;
   swapTotal?: number;
@@ -309,7 +311,7 @@ export function getNodeRoutes(uuid: string): Record<string, string> {
 }
 
 export function flyxNodeToInfo(node: FlyxNode): NodeInfo {
-  const { region, name } = splitFlagName(str(node.name));
+  const { region, name } = splitFlagName(str(node.name), str(node.region));
   return {
     uuid: String(node.id),
     name: name || str(node.name) || `#${node.id}`,
