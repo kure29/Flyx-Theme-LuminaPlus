@@ -228,13 +228,18 @@ function aliasMatches(lowerName: string, alias: string) {
 }
 
 /**
- * FLYX 没有地区字段，从服务器名推断：
- * 1. 国旗 emoji（任意位置，如「🇭🇰 香港 01」「香港 🇭🇰」），名称里去掉这面旗（卡片已经单独显示旗帜）；
- * 2. 国家或城市名（「香港 01」「东京 IIJ」「Los Angeles」）；
- * 3. 独立的两位大写代码（「HK-01」「JP Tokyo」「[SG] ARM」）。
+ * 服务器的地区：
+ * 1. 名称里的国旗 emoji（任意位置，如「🇭🇰 香港 01」「香港 🇭🇰」），名称里去掉这面旗（卡片已经单独显示旗帜）；
+ * 2. 面板给出的 region（较新的 FLYX 按服务器地址自动识别，管理员也可以手动指定）；
+ * 3. 名称里的国家或城市名（「香港 01」「东京 IIJ」「Los Angeles」）；
+ * 4. 名称里独立的两位大写代码（「HK-01」「JP Tokyo」「[SG] ARM」）。
  * 都没有时地区为空。
  */
-export function splitFlagName(name: string): { region: string; name: string } {
+export function splitFlagName(
+  name: string,
+  /** FLYX 面板给出的地区（管理员选的或按地址识别的），排在名称里的国旗之后、地名之前。 */
+  panelRegion?: string,
+): { region: string; name: string } {
   const trimmed = name.trim();
   const flag = trimmed.match(FLAG_ANYWHERE_RE);
   const flagCode = flag ? countryCodeFromFlagEmoji(flag[1]) : null;
@@ -248,6 +253,9 @@ export function splitFlagName(name: string): { region: string; name: string } {
       .trim();
     return { region: flagCode, name: rest || trimmed };
   }
+
+  const panel = (panelRegion ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(panel)) return { region: panel, name: trimmed };
 
   const lower = trimmed.toLowerCase();
   for (const [alias, code] of NAME_ALIASES) {
