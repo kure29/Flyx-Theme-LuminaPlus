@@ -3,12 +3,14 @@ import {
   ApiRequestError,
   flyxNodeToInfo,
   flyxNodeToRealtime,
+  getNodes,
   getPublic,
   normalizePingHistory,
   rangeForHours,
   type FlyxNode,
 } from "@/services/api";
 import { splitFlagName } from "@/utils/geo";
+import { parseRegionMap, regionFromRules } from "@/utils/regionMap";
 import { resolveThemeConfig } from "@/utils/themeConfig";
 
 const GiB = 1024 ** 3;
@@ -185,5 +187,56 @@ describe("region from server name", () => {
     ["germanyvps", "", "germanyvps"],
   ])("%s", (input, region, name) => {
     expect(splitFlagName(input)).toEqual({ region, name });
+  });
+});
+
+describe("region map setting", () => {
+  const rules = parseRegionMap(
+    "香港01=HK\n东京：🇯🇵\nnas = 中国\n# 注释\n无效行\n乱写=火星\nLA:us",
+  );
+
+  it("parses codes, flags and country names and skips bad lines", () => {
+    expect(rules).toEqual(
+      expect.arrayContaining([
+        { pattern: "香港01", code: "HK" },
+        { pattern: "东京", code: "JP" },
+        { pattern: "nas", code: "CN" },
+        { pattern: "la", code: "US" },
+      ]),
+    );
+    expect(rules).toHaveLength(4);
+  });
+
+  it("prefers an exact name, then the longest fragment", () => {
+    expect(regionFromRules(["香港01"], rules)).toBe("HK");
+    expect(regionFromRules(["东京 IIJ"], rules)).toBe("JP");
+    expect(regionFromRules(["家里的 NAS"], rules)).toBe("CN");
+    expect(regionFromRules(["新加坡"], rules)).toBeNull();
+  });
+
+  it("applies the setting to the node list over name inference", async () => {
+    respond({
+      "/api/v1/public/status": {
+        code: 0,
+        data: {
+          title: "t", timezone: "", generatedAt: 0, days: [], showTraffic: true,
+          nodes: [
+            { id: 1, name: "家里的 NAS", online: true },
+            { id: 2, name: "🇭🇰 香港 HKT", online: true },
+            { id: 3, name: "服务器 A", online: true },
+          ],
+        },
+      },
+      "/api/v1/public/status/theme-config": {
+        code: 0,
+        data: { theme: "luminaplus", values: { regionMap: "NAS=CN\n香港 HKT=SG" } },
+      },
+    });
+    const nodes = await getNodes();
+    expect(nodes.map((node) => [node.name, node.region])).toEqual([
+      ["家里的 NAS", "CN"],
+      ["香港 HKT", "SG"],
+      ["服务器 A", ""],
+    ]);
   });
 });

@@ -18,6 +18,7 @@ import type {
 } from "@/types/models";
 import { fetchWithTimeout } from "@/utils/abort";
 import { splitFlagName } from "@/utils/geo";
+import { regionFromRules, parseRegionMap } from "@/utils/regionMap";
 import { resolveThemeConfig } from "@/utils/themeConfig";
 import type { TrafficMetricSeries } from "@/utils/trafficStats";
 
@@ -382,11 +383,29 @@ export function flyxNodeToRealtime(node: FlyxNode, generatedAt: number): Record<
 
 // ---------- 站点信息与主题设置 ----------
 
+const THEME_SETTINGS_CACHE_MS = 60_000;
+let cachedThemeSettings: { values: Record<string, unknown>; at: number } | null = null;
+
 export async function loadThemeSettings(options?: ApiCallOptions): Promise<Record<string, unknown>> {
   const config = await requestFlyx<FlyxThemeConfig>(THEME_CONFIG_PATH, options);
   const values = config?.values;
-  if (!values || typeof values !== "object" || Array.isArray(values)) return {};
-  return values;
+  const resolved =
+    !values || typeof values !== "object" || Array.isArray(values) ? {} : values;
+  cachedThemeSettings = { values: resolved, at: Date.now() };
+  return resolved;
+}
+
+/** 节点列表要用到「服务器地区」设置；一分钟内复用上次读到的设置，读不到时当作没设置。 */
+async function themeSettingsForNodes(options?: ApiCallOptions) {
+  if (cachedThemeSettings && Date.now() - cachedThemeSettings.at < THEME_SETTINGS_CACHE_MS) {
+    return cachedThemeSettings.values;
+  }
+  try {
+    return await loadThemeSettings(options);
+  } catch (error) {
+    if (options?.signal?.aborted) throw error;
+    return cachedThemeSettings?.values ?? {};
+  }
 }
 
 function describeThemeSettingsReadError(error: unknown) {
@@ -431,8 +450,14 @@ export async function getPublic(options?: ApiCallOptions): Promise<PublicConfig>
 // ---------- 节点与实时状态 ----------
 
 export async function getNodes(options?: ApiCallOptions): Promise<NodeInfo[]> {
-  const status = await loadStatus(options);
-  return status.nodes.map(flyxNodeToInfo);
+  const [status, settings] = await Promise.all([loadStatus(options), themeSettingsForNodes(options)]);
+  const rules = parseRegionMap(settings.regionMap);
+  return status.nodes.map((node) => {
+    const info = flyxNodeToInfo(node);
+    // 主题设置里写了的地区优先于从名称推断的。
+    const region = regionFromRules([str(node.name), info.name], rules);
+    return region ? { ...info, region } : info;
+  });
 }
 
 export async function getNodesLatestStatus(

@@ -11,19 +11,8 @@ export function Flag({ region, size = 14 }: FlagProps) {
   const value = region?.trim() ?? "";
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  if (!value) {
-    return (
-      <span
-        aria-hidden
-        className="inline-block rounded-[3px] shrink-0"
-        style={{
-          width: size + 8,
-          height: size,
-          background: "var(--border-subtle)",
-        }}
-      />
-    );
-  }
+  // 没有地区时不画占位块（FLYX 的服务器多数没有地区信息）。
+  if (!value) return null;
 
   const flagCode = getDisplayRegionCode(value);
   const src = publicAsset(`assets/flags/${flagCode}.svg`);
