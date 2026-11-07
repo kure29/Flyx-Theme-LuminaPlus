@@ -1,0 +1,132 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  formatBillingCycle,
+  formatRenewalPrice,
+  normalizeBillingCycle,
+} from "@/utils/billing";
+
+function inDays(days: number) {
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
+describe("formatBillingCycle", () => {
+  it("maps known day-counts to labels", () => {
+    expect(formatBillingCycle(30)).toBe("月");
+    expect(formatBillingCycle(90)).toBe("季");
+    expect(formatBillingCycle(180)).toBe("半年");
+    expect(formatBillingCycle(365)).toBe("年");
+    expect(formatBillingCycle(360)).toBe("年");
+  });
+
+  it("renders whole-year multiples", () => {
+    expect(formatBillingCycle(730)).toBe("2年");
+    expect(formatBillingCycle(1095)).toBe("3年");
+  });
+
+  it("maps monitor's multi-year payment cycles (regression)", () => {
+    // monitor 后台的付款周期下拉框写入的是这些词,三年付 1095 元曾被显示成「1095/年」。
+    expect(formatBillingCycle("triennial")).toBe("3年");
+    expect(formatBillingCycle("biennial")).toBe("2年");
+    expect(formatBillingCycle("三年付")).toBe("3年");
+    expect(formatBillingCycle("两年付")).toBe("2年");
+    expect(formatBillingCycle("semiannual")).toBe("半年");
+    expect(formatBillingCycle("once")).toBe("永久");
+    expect(normalizeBillingCycle("triennial")).toEqual({ kind: "year", days: 1095, years: 3 });
+    expect(normalizeBillingCycle("biennial")).toEqual({ kind: "year", days: 730, years: 2 });
+  });
+
+  it("treats -1 as a lifetime cycle (regression)", () => {
+    expect(formatBillingCycle(-1)).toBe("永久");
+  });
+
+  it("does not render unset cycles as 0天 (regression)", () => {
+    expect(formatBillingCycle("")).toBe("年");
+    expect(formatBillingCycle(null)).toBe("年");
+    expect(formatBillingCycle(undefined)).toBe("年");
+    expect(formatBillingCycle(0)).toBe("年");
+  });
+
+  it("maps textual cycles", () => {
+    expect(formatBillingCycle("monthly")).toBe("月");
+    expect(formatBillingCycle("年")).toBe("年");
+    expect(formatBillingCycle("lifetime")).toBe("永久");
+  });
+
+  it("maps Chinese payment-cycle idioms (regression)", () => {
+    expect(formatBillingCycle("月付")).toBe("月");
+    expect(formatBillingCycle("季付")).toBe("季");
+    expect(formatBillingCycle("半年付")).toBe("半年");
+    expect(formatBillingCycle("年付")).toBe("年");
+    expect(formatBillingCycle("Semi-Annually")).toBe("半年");
+    expect(formatBillingCycle("semiannually")).toBe("半年");
+  });
+
+  it("falls back to a day-count for arbitrary positive numbers", () => {
+    expect(formatBillingCycle(45)).toBe("45天");
+  });
+});
+
+describe("formatRenewalPrice", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-13T12:00:00.000Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders -1 prices as free", () => {
+    expect(formatRenewalPrice({ price: -1, currency: "¥", billing_cycle: 365 })).toBe("免费");
+  });
+
+  it("renders zero prices as free only for long-term expiry", () => {
+    expect(
+      formatRenewalPrice({
+        price: 0,
+        currency: "¥",
+        billing_cycle: 365,
+        expired_at: inDays(40_000),
+      }),
+    ).toBe("免费");
+    expect(
+      formatRenewalPrice({
+        price: 0,
+        currency: "¥",
+        billing_cycle: 365,
+        expired_at: inDays(30),
+      }),
+    ).toBeNull();
+  });
+
+  it("renders positive prices with currency and billing cycle", () => {
+    expect(formatRenewalPrice({ price: 10, currency: "$", billing_cycle: 30 })).toBe("$10/月");
+    expect(formatRenewalPrice({ price: 10, currency: "USD", billing_cycle: "month" })).toBe("US$10/月");
+    expect(formatRenewalPrice({ price: 19.9, currency: "EUR", billing_cycle: "year" })).toBe("€19.90/年");
+    expect(formatRenewalPrice({ price: 19.9, currency: "¥", billing_cycle: -1 })).toBe("¥19.90/永久");
+  });
+
+  it("keeps monitor's triennial price on its own cycle (regression)", () => {
+    // 三年付 1095:整期价格要配三年,而不是被摊成「1095/年」。
+    expect(
+      formatRenewalPrice({ price: 1095, currency: "CNY", billing_cycle: "triennial" }),
+    ).toBe("¥1,095/3年");
+  });
+
+  it("understands monitor 1.3.1+ month-count cycles", () => {
+    expect(normalizeBillingCycle("18m")).toEqual({ kind: "months", days: 540, months: 18 });
+    expect(normalizeBillingCycle("1m")).toEqual({ kind: "month", days: 30 });
+    expect(normalizeBillingCycle("6m")).toEqual({ kind: "halfYear", days: 180 });
+    expect(normalizeBillingCycle("60m")).toEqual({ kind: "year", days: 1825, years: 5 });
+    expect(formatBillingCycle("18m")).toBe("18个月");
+    expect(formatBillingCycle(540)).toBe("18个月");
+    expect(formatBillingCycle("60m")).toBe("5年");
+    expect(formatRenewalPrice({ price: 300, currency: "CNY", billing_cycle: "18m" })).toBe("¥300/18个月");
+  });
+
+  it("formats currencies the way the monitor panel does", () => {
+    expect(formatRenewalPrice({ price: 1200, currency: "JPY", billing_cycle: "monthly" })).toBe("JP¥1,200/月");
+    expect(formatRenewalPrice({ price: 38, currency: "hkd", billing_cycle: "monthly" })).toBe("HK$38/月");
+    expect(formatRenewalPrice({ price: 12.5, currency: "SGD", billing_cycle: "monthly" })).toBe("SGD 12.50/月");
+    expect(formatRenewalPrice({ price: 9.9, currency: "港币", billing_cycle: "monthly" })).toBe("港币9.90/月");
+  });
+});

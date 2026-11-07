@@ -1,0 +1,425 @@
+{
+  "name": "LuminaPlus",
+  "short": "luminaplus",
+  "description": "高信息密度状态主题，移植自 LuminaPlus",
+  "version": "1.1.0",
+  "author": "kure29",
+  "url": "https://github.com/kure29/Flyx-Theme-LuminaPlus",
+  "flyxApi": 1,
+  "config": [
+    {
+      "type": "title",
+      "label": "外观"
+    },
+    {
+      "key": "defaultAppearance",
+      "type": "select",
+      "label": "默认外观",
+      "default": "system",
+      "options": [
+        {
+          "value": "system",
+          "label": "跟随系统"
+        },
+        {
+          "value": "light",
+          "label": "浅色"
+        },
+        {
+          "value": "dark",
+          "label": "深色"
+        }
+      ],
+      "help": "访客在悬浮按钮里切换后以访客的选择为准"
+    },
+    {
+      "key": "desktopNodeViewMode",
+      "type": "select",
+      "label": "电脑默认视图",
+      "default": "large",
+      "options": [
+        {
+          "value": "large",
+          "label": "大卡片"
+        },
+        {
+          "value": "compact",
+          "label": "小卡片"
+        },
+        {
+          "value": "mini",
+          "label": "迷你"
+        },
+        {
+          "value": "list",
+          "label": "列表"
+        }
+      ]
+    },
+    {
+      "key": "mobileNodeViewMode",
+      "type": "select",
+      "label": "手机默认视图",
+      "default": "compact",
+      "options": [
+        {
+          "value": "large",
+          "label": "大卡片"
+        },
+        {
+          "value": "compact",
+          "label": "小卡片"
+        },
+        {
+          "value": "mini",
+          "label": "迷你"
+        }
+      ]
+    },
+    {
+      "key": "darkDepth",
+      "type": "number",
+      "label": "深色模式黑度",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "help": "0 为默认的深灰，越大越接近纯黑"
+    },
+    {
+      "type": "title",
+      "label": "首页"
+    },
+    {
+      "key": "showHomeOverview",
+      "type": "boolean",
+      "label": "显示顶部概览",
+      "default": true,
+      "help": "在线数、实时带宽、本月流量"
+    },
+    {
+      "key": "showOverviewRatings",
+      "type": "boolean",
+      "label": "概览显示评级标签",
+      "default": true
+    },
+    {
+      "key": "showRegionBar",
+      "type": "boolean",
+      "label": "显示地区筛选",
+      "default": true,
+      "help": "地区按服务器名开头的国旗 emoji 识别"
+    },
+    {
+      "key": "enableHomeSort",
+      "type": "boolean",
+      "label": "允许访客切换排序",
+      "default": true
+    },
+    {
+      "key": "homeSortField",
+      "type": "select",
+      "label": "默认排序",
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": "后台顺序"
+        },
+        {
+          "value": "name",
+          "label": "名称"
+        },
+        {
+          "value": "speed",
+          "label": "实时网速"
+        },
+        {
+          "value": "traffic",
+          "label": "本月流量"
+        }
+      ]
+    },
+    {
+      "key": "enableHomepageMultiPing",
+      "type": "boolean",
+      "label": "卡片显示全部测试点",
+      "default": false,
+      "help": "关闭时每台服务器只显示第一个测试点（后台固定的测试点在前）"
+    },
+    {
+      "key": "showConnections",
+      "type": "boolean",
+      "label": "显示连接数",
+      "default": false
+    },
+    {
+      "key": "compactShowTrafficTotal",
+      "type": "boolean",
+      "label": "小卡片显示本月流量",
+      "default": true
+    },
+    {
+      "key": "compactShowUptime",
+      "type": "boolean",
+      "label": "小卡片显示在线时长",
+      "default": true
+    },
+    {
+      "key": "showTodayTrafficPopover",
+      "type": "boolean",
+      "label": "显示今日流量弹窗",
+      "default": true,
+      "help": "由网速历史估算"
+    },
+    {
+      "key": "enableHomeHeaderAutoHide",
+      "type": "boolean",
+      "label": "首页标题自动隐藏",
+      "default": false
+    },
+    {
+      "key": "homeHeaderVisibleSeconds",
+      "type": "number",
+      "label": "标题显示秒数",
+      "default": 10,
+      "min": 1,
+      "max": 3600
+    },
+    {
+      "key": "enableAdminButton",
+      "type": "boolean",
+      "label": "显示后台入口按钮",
+      "default": false,
+      "help": "悬浮按钮里加一个指向面板首页的链接"
+    },
+    {
+      "type": "title",
+      "label": "详情页"
+    },
+    {
+      "key": "showPingChart",
+      "type": "boolean",
+      "label": "显示延迟图表",
+      "default": true
+    },
+    {
+      "type": "title",
+      "label": "背景"
+    },
+    {
+      "key": "enableBackgroundImage",
+      "type": "boolean",
+      "label": "启用背景",
+      "default": true,
+      "help": "关闭后保留下面的地址但不加载"
+    },
+    {
+      "key": "backgroundMediaType",
+      "type": "select",
+      "label": "背景类型",
+      "default": "image",
+      "options": [
+        {
+          "value": "image",
+          "label": "图片"
+        },
+        {
+          "value": "video",
+          "label": "视频"
+        }
+      ]
+    },
+    {
+      "key": "backgroundImage",
+      "type": "string",
+      "label": "背景图片地址",
+      "default": "",
+      "help": "https 地址或站内路径；浅色和深色用不同图片时写成「浅色地址|深色地址」"
+    },
+    {
+      "key": "backgroundImageMobile",
+      "type": "string",
+      "label": "手机背景图片地址",
+      "default": "",
+      "help": "留空时用上面的图片"
+    },
+    {
+      "key": "backgroundVideo",
+      "type": "string",
+      "label": "背景视频地址",
+      "default": "",
+      "help": "留空用主题自带的视频；手机和省流量模式下不播放视频"
+    },
+    {
+      "key": "backgroundVideoDark",
+      "type": "string",
+      "label": "深色模式背景视频地址",
+      "default": ""
+    },
+    {
+      "key": "backgroundAlignment",
+      "type": "select",
+      "label": "背景对齐",
+      "default": "cover,center",
+      "options": [
+        {
+          "value": "cover,center",
+          "label": "铺满 · 居中"
+        },
+        {
+          "value": "cover,top",
+          "label": "铺满 · 靠上"
+        },
+        {
+          "value": "cover,bottom",
+          "label": "铺满 · 靠下"
+        },
+        {
+          "value": "contain,center",
+          "label": "完整显示 · 居中"
+        },
+        {
+          "value": "auto,center",
+          "label": "原始大小 · 居中"
+        }
+      ]
+    },
+    {
+      "key": "surfaceOpacity",
+      "type": "number",
+      "label": "卡片不透明度",
+      "default": 100,
+      "min": 0,
+      "max": 100,
+      "help": "有背景时降低可以透出背景"
+    },
+    {
+      "key": "backgroundScrim",
+      "type": "number",
+      "label": "浅色背景遮罩",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "backgroundScrimDark",
+      "type": "number",
+      "label": "深色背景遮罩",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "type": "title",
+      "label": "动效"
+    },
+    {
+      "key": "enableAmbientEffect",
+      "type": "boolean",
+      "label": "启用飘落动效",
+      "default": false
+    },
+    {
+      "key": "ambientEffect",
+      "type": "select",
+      "label": "动效",
+      "default": "sakura",
+      "options": [
+        {
+          "value": "sakura",
+          "label": "樱花"
+        },
+        {
+          "value": "rain",
+          "label": "雨"
+        },
+        {
+          "value": "snow",
+          "label": "雪"
+        },
+        {
+          "value": "leaves",
+          "label": "落叶"
+        },
+        {
+          "value": "confetti",
+          "label": "彩纸"
+        },
+        {
+          "value": "fireworks",
+          "label": "烟花"
+        }
+      ]
+    },
+    {
+      "type": "title",
+      "label": "配色（#RRGGBB，留空用默认）"
+    },
+    {
+      "key": "color_cpu",
+      "type": "string",
+      "label": "CPU 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_memory",
+      "type": "string",
+      "label": "内存 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_disk",
+      "type": "string",
+      "label": "磁盘 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_load",
+      "type": "string",
+      "label": "负载 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_swap",
+      "type": "string",
+      "label": "Swap 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_speedIdle",
+      "type": "string",
+      "label": "网速 · 超低速 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_speedLow",
+      "type": "string",
+      "label": "网速 · 低速 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_speedHigh",
+      "type": "string",
+      "label": "网速 · 高速 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_speedMax",
+      "type": "string",
+      "label": "网速 · 急速 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_trafficUp",
+      "type": "string",
+      "label": "上行 颜色",
+      "default": ""
+    },
+    {
+      "key": "color_trafficDown",
+      "type": "string",
+      "label": "下行 颜色",
+      "default": ""
+    }
+  ]
+}
