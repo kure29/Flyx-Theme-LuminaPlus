@@ -46,11 +46,11 @@ afterEach(() => {
 });
 
 describe("FLYX node mapping", () => {
-  it("takes the region from the leading flag and drops it from the name", () => {
+  it("takes the region from the flag and drops it from the name", () => {
     expect(splitFlagName("🇭🇰 香港 01")).toEqual({ region: "HK", name: "香港 01" });
     expect(splitFlagName("🇬🇧London")).toEqual({ region: "GB", name: "London" });
     expect(splitFlagName("家里的 NAS")).toEqual({ region: "", name: "家里的 NAS" });
-    expect(splitFlagName("NAS 🇯🇵")).toEqual({ region: "", name: "NAS 🇯🇵" });
+    expect(splitFlagName("NAS 🇯🇵")).toEqual({ region: "JP", name: "NAS" });
   });
 
   it("maps static fields and leaves data FLYX does not have empty", () => {
@@ -165,5 +165,25 @@ describe("public config", () => {
     const error = await getPublic().catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiRequestError);
     expect((error as ApiRequestError).status).toBe(404);
+  });
+});
+
+describe("region from server name", () => {
+  it.each([
+    ["🇭🇰 香港 01", "HK", "香港 01"],
+    ["香港 🇭🇰", "HK", "香港"],
+    ["[🇯🇵] 东京", "JP", "东京"],
+    ["🇺🇸-LA-01", "US", "LA-01"],
+    ["香港 01", "HK", "香港 01"],
+    ["东京 IIJ", "JP", "东京 IIJ"],
+    ["Los Angeles CN2", "US", "Los Angeles CN2"],
+    ["HK-01", "HK", "HK-01"],
+    ["[SG] ARM", "SG", "[SG] ARM"],
+    ["UK London", "GB", "UK London"],
+    ["AS9929 优化", "", "AS9929 优化"],
+    ["家里的 NAS", "", "家里的 NAS"],
+    ["germanyvps", "", "germanyvps"],
+  ])("%s", (input, region, name) => {
+    expect(splitFlagName(input)).toEqual({ region, name });
   });
 });

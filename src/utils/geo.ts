@@ -189,16 +189,76 @@ export function getDisplayRegionCode(region: string | null | undefined) {
   return getCountryCodeFromRegion(region) ?? "UN";
 }
 
-const LEADING_FLAG_RE = /^\s*([\u{1F1E6}-\u{1F1FF}]{2})[\s\u{FE0F}]*/u;
+// 名称里常见的城市名（地区识别用，国家名已在 REGION_ALIASES 里）。
+const CITY_ALIASES: Record<string, string> = {
+  东京: "JP", 東京: "JP", 大阪: "JP", 埼玉: "JP", tokyo: "JP", osaka: "JP",
+  首尔: "KR", 首爾: "KR", 春川: "KR", seoul: "KR",
+  台北: "TW", 新北: "TW", 台中: "TW", 彰化: "TW", taipei: "TW",
+  洛杉矶: "US", 洛杉磯: "US", 圣何塞: "US", 聖荷西: "US", 硅谷: "US", 矽谷: "US", 西雅图: "US",
+  纽约: "US", 紐約: "US", 芝加哥: "US", 达拉斯: "US", 凤凰城: "US", 迈阿密: "US", 弗里蒙特: "US",
+  "los angeles": "US", "san jose": "US", seattle: "US", "new york": "US", chicago: "US",
+  dallas: "US", phoenix: "US", miami: "US", fremont: "US", "silicon valley": "US",
+  伦敦: "GB", 倫敦: "GB", london: "GB",
+  法兰克福: "DE", 法蘭克福: "DE", 纽伦堡: "DE", frankfurt: "DE", nuremberg: "DE",
+  阿姆斯特丹: "NL", amsterdam: "NL", 巴黎: "FR", paris: "FR",
+  莫斯科: "RU", moscow: "RU", 迪拜: "AE", 杜拜: "AE", dubai: "AE",
+  孟买: "IN", mumbai: "IN", 悉尼: "AU", 雪梨: "AU", sydney: "AU", 多伦多: "CA", toronto: "CA",
+  吉隆坡: "MY", "kuala lumpur": "MY", 曼谷: "TH", bangkok: "TH", 胡志明: "VN", 河内: "VN",
+  马尼拉: "PH", manila: "PH", 雅加达: "ID", jakarta: "ID", 伊斯坦布尔: "TR", istanbul: "TR",
+  上海: "CN", 北京: "CN", 广州: "CN", 深圳: "CN", 杭州: "CN", 成都: "CN", 南京: "CN",
+};
+
+const FLAG_ANYWHERE_RE = /[\s\u{FE0F}]*([\u{1F1E6}-\u{1F1FF}]{2})[\s\u{FE0F}]*/u;
+// 2 个大写字母的代码要求前后不是字母；这几个常与别的写法撞车（AS9929、AM/PM、TV）。
+const ISO_TOKEN_RE = /(?:^|[^A-Za-z])([A-Z]{2})(?=[^A-Za-z]|$)/g;
+const AMBIGUOUS_ISO_TOKENS = new Set(["AS", "AM", "PM", "TV", "IP", "ME", "IT", "NO", "TO", "GO", "BE", "IS"]);
+
+const NAME_ALIASES = Object.entries({ ...REGION_ALIASES, ...CITY_ALIASES })
+  // 太短的英文缩写（us、de、hk、cn、uk）由下面的大写代码规则处理，避免误伤普通单词。
+  .filter(([alias]) => /[^\x00-\x7f]/.test(alias) || alias.length >= 4)
+  .sort(([left], [right]) => right.length - left.length);
+
+function aliasMatches(lowerName: string, alias: string) {
+  if (/[^\x00-\x7f]/.test(alias)) return lowerName.includes(alias);
+  const index = lowerName.indexOf(alias);
+  if (index < 0) return false;
+  const before = lowerName[index - 1];
+  const after = lowerName[index + alias.length];
+  return !(before && /[a-z]/.test(before)) && !(after && /[a-z]/.test(after));
+}
 
 /**
- * FLYX 没有地区字段，服务器名常以国旗 emoji 开头（如「🇭🇰 香港 01」）。
- * 拆出地区代码，名称里去掉这面旗（卡片已经单独显示旗帜）。没有旗帜时地区为空。
+ * FLYX 没有地区字段，从服务器名推断：
+ * 1. 国旗 emoji（任意位置，如「🇭🇰 香港 01」「香港 🇭🇰」），名称里去掉这面旗（卡片已经单独显示旗帜）；
+ * 2. 国家或城市名（「香港 01」「东京 IIJ」「Los Angeles」）；
+ * 3. 独立的两位大写代码（「HK-01」「JP Tokyo」「[SG] ARM」）。
+ * 都没有时地区为空。
  */
 export function splitFlagName(name: string): { region: string; name: string } {
-  const match = name.match(LEADING_FLAG_RE);
-  const code = match ? countryCodeFromFlagEmoji(match[1]) : null;
-  if (!match || !code) return { region: "", name: name.trim() };
-  const rest = name.slice(match[0].length).trim();
-  return { region: code, name: rest || name.trim() };
+  const trimmed = name.trim();
+  const flag = trimmed.match(FLAG_ANYWHERE_RE);
+  const flagCode = flag ? countryCodeFromFlagEmoji(flag[1]) : null;
+  if (flag && flagCode) {
+    const index = flag.index ?? 0;
+    const rest = `${trimmed.slice(0, index)} ${trimmed.slice(index + flag[0].length)}`
+      // 旗帜去掉后留下的空括号（「[🇭🇰] 香港」）和首尾分隔符一并去掉。
+      .replace(/\[\s*\]|\(\s*\)|【\s*】/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/^[\s|·\-_/]+|[\s|·\-_/]+$/g, "")
+      .trim();
+    return { region: flagCode, name: rest || trimmed };
+  }
+
+  const lower = trimmed.toLowerCase();
+  for (const [alias, code] of NAME_ALIASES) {
+    if (aliasMatches(lower, alias)) return { region: code, name: trimmed };
+  }
+
+  for (const match of trimmed.matchAll(ISO_TOKEN_RE)) {
+    const token = match[1];
+    if (AMBIGUOUS_ISO_TOKENS.has(token)) continue;
+    if (token === "UK") return { region: "GB", name: trimmed };
+    if (ISO_3166_ALPHA2.has(token)) return { region: token, name: trimmed };
+  }
+  return { region: "", name: trimmed };
 }
